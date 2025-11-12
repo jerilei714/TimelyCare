@@ -1,17 +1,11 @@
-package com.example.timelycare
+package com.example.timelycare.service
 
 import com.google.android.gms.wearable.*
 import kotlinx.coroutines.tasks.await
+import com.example.timelycare.data.Medication
+import java.time.format.DateTimeFormatter
 
 class MedicationDataService {
-
-    data class Medication(
-        val id: String,
-        val name: String,
-        val dosage: String,
-        val time: String,
-        val frequency: String
-    )
 
     companion object {
         private const val MEDICATION_PATH = "/medication_data"
@@ -31,9 +25,10 @@ class MedicationDataService {
     }
 
     private fun medicationsToJson(medications: List<Medication>): String {
-        // Simple JSON conversion - you can use Gson/Moshi for complex cases
+        // Convert to simplified format for watch communication
         return medications.joinToString("|") { med ->
-            "${med.id},${med.name},${med.dosage},${med.time},${med.frequency}"
+            val firstTime = med.medicationTimes.firstOrNull()?.format(DateTimeFormatter.ofPattern("h:mm a")) ?: "No time"
+            "${med.id},${med.name},${med.dosage},$firstTime,${med.frequency}"
         }
     }
 }

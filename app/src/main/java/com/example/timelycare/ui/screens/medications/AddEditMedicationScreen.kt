@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -34,7 +35,8 @@ fun AddEditMedicationScreen(
     onSave: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val repository = remember { MedicationRepository.getInstance() }
+    val context = LocalContext.current
+    val repository = remember { MedicationRepository.getInstance(context) }
 
     // Helper functions to convert medication data back to form format
     fun formatDateToString(date: LocalDate?): String {

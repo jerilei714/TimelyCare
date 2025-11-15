@@ -3,6 +3,7 @@ package com.example.timelycare.ui.screens.calendar
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.timelycare.data.MedicationRepository
@@ -10,7 +11,8 @@ import java.time.LocalDate
 
 @Composable
 fun CalendarScreen() {
-    val repository = remember { MedicationRepository.getInstance() }
+    val context = LocalContext.current
+    val repository = remember { MedicationRepository.getInstance(context) }
     val medications by repository.medications.collectAsStateWithLifecycle()
 
     var selectedViewType by remember { mutableStateOf(CalendarViewType.WEEK) }

@@ -13,7 +13,7 @@ data class Medication(
     val frequency: String
 )
 
-class MedicationRepository(context: Context) {
+class MedicationRepository private constructor(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("medications", Context.MODE_PRIVATE)
 
     private val _medications = MutableStateFlow<List<Medication>>(emptyList())
@@ -24,8 +24,20 @@ class MedicationRepository(context: Context) {
     }
 
     fun updateMedications(medications: List<Medication>) {
+        android.util.Log.d("WearMedicationRepo", "Updating medications: ${medications.size} items")
         _medications.value = medications
         saveMedications(medications)
+    }
+
+    companion object {
+        @Volatile
+        private var INSTANCE: MedicationRepository? = null
+
+        fun getInstance(context: Context): MedicationRepository {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: MedicationRepository(context.applicationContext).also { INSTANCE = it }
+            }
+        }
     }
 
     private fun saveMedications(medications: List<Medication>) {

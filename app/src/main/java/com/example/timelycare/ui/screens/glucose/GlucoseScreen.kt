@@ -18,9 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.timelycare.data.DailyGlucoseData
+import com.example.timelycare.data.GlucoseReading
 import com.example.timelycare.data.GlucoseRepository
+import com.example.timelycare.data.GlucoseCategory
 import com.example.timelycare.ui.theme.*
 import java.time.LocalDate
+import kotlin.random.Random
 
 @Composable
 fun GlucoseScreen(
@@ -43,6 +47,20 @@ fun GlucoseScreen(
     LaunchedEffect(dateNavItems.size) {
         if (dateNavItems.isNotEmpty()) {
             selectedNavIndex = selectedNavIndex.coerceIn(0, dateNavItems.lastIndex)
+        }
+    }
+
+    // Determine which day's data to display based on the selected date
+    val selectedDailyData = remember(todayData, dateNavItems, selectedNavIndex) {
+        if (dateNavItems.isEmpty()) {
+            todayData
+        } else {
+            val selectedDate = dateNavItems[selectedNavIndex].date
+            if (selectedDate == todayData.date) {
+                todayData
+            } else {
+                generateSyntheticDailyGlucoseData(todayData, selectedDate)
+            }
         }
     }
 
@@ -99,15 +117,54 @@ fun GlucoseScreen(
             )
 
             // Current Glucose Reading Card
-            CurrentGlucoseReadingCard(dailyData = todayData)
+            CurrentGlucoseReadingCard(dailyData = selectedDailyData)
 
             // Daily Glucose Chart
-            DailyGlucoseChart(dailyData = todayData)
+            DailyGlucoseChart(dailyData = selectedDailyData)
 
             // Past Week History
             PastWeekGlucoseHistory(historicalReadings = historicalReadings)
         }
     }
+}
+
+private fun generateSyntheticDailyGlucoseData(template: DailyGlucoseData, targetDate: LocalDate): DailyGlucoseData {
+    val random = Random(targetDate.toEpochDay())
+
+    fun categorize(value: Int): GlucoseCategory = when {
+        value < 70 -> GlucoseCategory.LOW
+        value <= 140 -> GlucoseCategory.NORMAL
+        else -> GlucoseCategory.HIGH
+    }
+
+    val readings = template.readings.map { reading ->
+        val delta = random.nextInt(-12, 13)
+        val newValue = (reading.value + delta).coerceIn(70, 160)
+        GlucoseReading(
+            value = newValue,
+            timestamp = reading.timestamp,
+            category = categorize(newValue)
+        )
+    }
+
+    val average = readings.map { it.value }.average().toInt()
+    val minReading = readings.minByOrNull { it.value } ?: readings.first()
+    val maxReading = readings.maxByOrNull { it.value } ?: readings.last()
+    val current = readings.lastOrNull() ?: readings.first()
+    val averageReading = GlucoseReading(
+        value = average,
+        timestamp = "Average",
+        category = categorize(average)
+    )
+
+    return template.copy(
+        date = targetDate,
+        readings = readings,
+        current = current,
+        average = averageReading,
+        min = minReading,
+        max = maxReading
+    )
 }
 
 private data class DateNavItem(val date: LocalDate, val label: String)

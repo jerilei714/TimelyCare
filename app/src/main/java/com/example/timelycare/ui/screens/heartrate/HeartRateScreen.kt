@@ -21,9 +21,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.timelycare.data.DailyHeartRateData
+import com.example.timelycare.data.HeartRateReading
 import com.example.timelycare.data.HeartRateRepository
 import com.example.timelycare.ui.theme.*
 import java.time.LocalDate
+import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +52,20 @@ fun HeartRateScreen(
     LaunchedEffect(dateNavItems.size) {
         if (dateNavItems.isNotEmpty()) {
             selectedNavIndex = selectedNavIndex.coerceIn(0, dateNavItems.lastIndex)
+        }
+    }
+
+    // Determine which day's data to display based on the selected date
+    val selectedDailyData = remember(todayData, dateNavItems, selectedNavIndex) {
+        if (dateNavItems.isEmpty()) {
+            todayData
+        } else {
+            val selectedDate = dateNavItems[selectedNavIndex].date
+            if (selectedDate == todayData.date) {
+                todayData
+            } else {
+                generateSyntheticDailyHeartRateData(todayData, selectedDate)
+            }
         }
     }
 
@@ -105,10 +122,10 @@ fun HeartRateScreen(
             )
 
             // Current Reading Card
-            CurrentReadingCard(dailyData = todayData)
+            CurrentReadingCard(dailyData = selectedDailyData)
 
             // Daily Heart Rate Chart
-            DailyHeartRateChart(dailyData = todayData)
+            DailyHeartRateChart(dailyData = selectedDailyData)
 
             // Heart Rate Zones
             HeartRateZonesCard(zones = zones)
@@ -120,6 +137,38 @@ fun HeartRateScreen(
             PastWeekHistory(historicalReadings = historicalReadings)
         }
     }
+}
+
+private fun generateSyntheticDailyHeartRateData(template: DailyHeartRateData, targetDate: LocalDate): DailyHeartRateData {
+    val random = Random(targetDate.toEpochDay())
+
+    val readings = template.readings.map { reading ->
+        val delta = random.nextInt(-6, 7)
+        val newBpm = (reading.bpm + delta).coerceIn(55, 110)
+        val zone = when {
+            newBpm <= 70 -> com.example.timelycare.data.HeartRateZone.NORMAL
+            newBpm <= 85 -> com.example.timelycare.data.HeartRateZone.ELEVATED
+            else -> com.example.timelycare.data.HeartRateZone.HIGH
+        }
+        HeartRateReading(
+            bpm = newBpm,
+            timestamp = reading.timestamp,
+            zone = zone
+        )
+    }
+
+    val average = readings.map { it.bpm }.average().toInt()
+    val min = readings.minOf { it.bpm }
+    val max = readings.maxOf { it.bpm }
+
+    return template.copy(
+        date = targetDate,
+        readings = readings,
+        average = average,
+        min = min,
+        max = max,
+        current = readings.lastOrNull()?.bpm ?: average
+    )
 }
 
 private data class DateNavItem(val date: LocalDate, val label: String)

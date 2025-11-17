@@ -18,9 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.timelycare.data.BloodPressureReading
 import com.example.timelycare.data.BloodPressureRepository
+import com.example.timelycare.data.DailyBPData
 import com.example.timelycare.ui.theme.*
 import java.time.LocalDate
+import kotlin.random.Random
 
 @Composable
 fun BloodPressureScreen(
@@ -43,6 +46,20 @@ fun BloodPressureScreen(
     LaunchedEffect(dateNavItems.size) {
         if (dateNavItems.isNotEmpty()) {
             selectedNavIndex = selectedNavIndex.coerceIn(0, dateNavItems.lastIndex)
+        }
+    }
+
+    // Determine which day's data to display based on the selected date
+    val selectedDailyData = remember(todayData, dateNavItems, selectedNavIndex) {
+        if (dateNavItems.isEmpty()) {
+            todayData
+        } else {
+            val selectedDate = dateNavItems[selectedNavIndex].date
+            if (selectedDate == todayData.date) {
+                todayData
+            } else {
+                generateSyntheticDailyBPData(todayData, selectedDate)
+            }
         }
     }
 
@@ -99,13 +116,13 @@ fun BloodPressureScreen(
             )
 
             // Current Reading Card
-            CurrentBPReadingCard(dailyData = todayData)
+            CurrentBPReadingCard(dailyData = selectedDailyData)
 
             // Daily BP Chart
-            DailyBPChart(dailyData = todayData)
+            DailyBPChart(dailyData = selectedDailyData)
 
             // Blood Pressure Ranges
-            BPRangesCard(dailyData = todayData)
+            BPRangesCard(dailyData = selectedDailyData)
 
             // Risk Assessment
             RiskAssessmentCard(riskAssessment = riskAssessment)
@@ -114,6 +131,49 @@ fun BloodPressureScreen(
             PastWeekBPHistory(historicalReadings = historicalReadings)
         }
     }
+}
+
+private fun generateSyntheticDailyBPData(template: DailyBPData, targetDate: LocalDate): DailyBPData {
+    val random = Random(targetDate.toEpochDay())
+
+    fun adjustReading(reading: BloodPressureReading): BloodPressureReading {
+        val systolicDelta = random.nextInt(-6, 7)
+        val diastolicDelta = random.nextInt(-4, 5)
+        val pulseDelta = random.nextInt(-6, 7)
+        val newSystolic = (reading.systolic + systolicDelta).coerceIn(105, 145)
+        val newDiastolic = (reading.diastolic + diastolicDelta).coerceIn(65, 95)
+        val newPulse = (reading.pulse + pulseDelta).coerceIn(60, 110)
+        return reading.copy(
+            systolic = newSystolic,
+            diastolic = newDiastolic,
+            pulse = newPulse
+        )
+    }
+
+    val readings = template.readings.map { adjustReading(it) }
+    val avgSystolic = readings.map { it.systolic }.average().toInt()
+    val avgDiastolic = readings.map { it.diastolic }.average().toInt()
+    val avgPulse = readings.map { it.pulse }.average().toInt()
+
+    val averageReading = readings.first().copy(
+        systolic = avgSystolic,
+        diastolic = avgDiastolic,
+        pulse = avgPulse,
+        timestamp = "Average"
+    )
+
+    val lowest = readings.minByOrNull { it.systolic + it.diastolic } ?: readings.first()
+    val highest = readings.maxByOrNull { it.systolic + it.diastolic } ?: readings.last()
+    val current = readings.lastOrNull() ?: readings.first()
+
+    return template.copy(
+        date = targetDate,
+        readings = readings,
+        current = current,
+        average = averageReading,
+        lowest = lowest,
+        highest = highest
+    )
 }
 
 private data class DateNavItem(val date: LocalDate, val label: String)

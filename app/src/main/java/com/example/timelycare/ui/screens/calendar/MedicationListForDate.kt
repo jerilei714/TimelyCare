@@ -111,7 +111,7 @@ private fun CalendarMedicationCard(
     val takenRepository = remember { MedicationTakenRepository.getInstance(context) }
     val takenRecords by takenRepository.takenRecords.collectAsStateWithLifecycle()
 
-    val isTaken by remember(takenRecords) {
+    val isTaken by remember(takenRecords, date, medication.id, scheduledTime) {
         derivedStateOf {
             takenRepository.isMedicationTaken(medication.id, scheduledTime, date)
         }

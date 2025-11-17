@@ -116,6 +116,14 @@ fun TodayMedicationCard(
                             color = TimelyCareTextSecondary,
                             modifier = Modifier.padding(top = 2.dp)
                         )
+                        if (medication.specialInstructions.isNotBlank()) {
+                            Text(
+                                text = "Notes: ${medication.specialInstructions}",
+                                fontSize = 14.sp,
+                                color = TimelyCareTextPrimary,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
                     }
                 }
 

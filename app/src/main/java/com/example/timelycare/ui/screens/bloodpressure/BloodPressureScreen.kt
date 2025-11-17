@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.timelycare.data.BloodPressureRepository
 import com.example.timelycare.ui.theme.*
+import java.time.LocalDate
 
 @Composable
 fun BloodPressureScreen(
@@ -30,6 +31,20 @@ fun BloodPressureScreen(
     val todayData by repository.todayData.collectAsStateWithLifecycle()
     val riskAssessment by repository.riskAssessment.collectAsStateWithLifecycle()
     val historicalReadings by repository.historicalReadings.collectAsStateWithLifecycle()
+    val dateNavItems = remember(todayData.date, historicalReadings) {
+        buildList {
+            add(DateNavItem(todayData.date, "Today"))
+            historicalReadings.forEach { reading ->
+                add(DateNavItem(reading.date, reading.displayDate))
+            }
+        }
+    }
+    var selectedNavIndex by remember(dateNavItems) { mutableIntStateOf(0) }
+    LaunchedEffect(dateNavItems.size) {
+        if (dateNavItems.isNotEmpty()) {
+            selectedNavIndex = selectedNavIndex.coerceIn(0, dateNavItems.lastIndex)
+        }
+    }
 
     Column(
         modifier = modifier.fillMaxSize()
@@ -68,7 +83,20 @@ fun BloodPressureScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Date Navigation
-            DateNavigationCard()
+            DateNavigationCard(
+                items = dateNavItems,
+                selectedIndex = selectedNavIndex,
+                onPrevious = {
+                    if (selectedNavIndex < dateNavItems.lastIndex) {
+                        selectedNavIndex++
+                    }
+                },
+                onNext = {
+                    if (selectedNavIndex > 0) {
+                        selectedNavIndex--
+                    }
+                }
+            )
 
             // Current Reading Card
             CurrentBPReadingCard(dailyData = todayData)
@@ -88,10 +116,18 @@ fun BloodPressureScreen(
     }
 }
 
+private data class DateNavItem(val date: LocalDate, val label: String)
 @Composable
 private fun DateNavigationCard(
+    items: List<DateNavItem>,
+    selectedIndex: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hasItems = items.isNotEmpty()
+    val currentLabel = if (hasItems) items[selectedIndex].label else "Today"
+    val positionLabel = if (hasItems) "${selectedIndex + 1} of ${items.size}" else "0 of 0"
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = TimelyCareWhite),
@@ -106,7 +142,8 @@ private fun DateNavigationCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
-                onClick = { /* Previous day navigation */ }
+                onClick = onPrevious,
+                enabled = hasItems && selectedIndex < items.lastIndex
             ) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowLeft,
@@ -126,7 +163,7 @@ private fun DateNavigationCard(
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "Today",
+                    text = currentLabel,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = TimelyCareTextPrimary
@@ -134,7 +171,8 @@ private fun DateNavigationCard(
             }
 
             IconButton(
-                onClick = { /* Next day navigation */ }
+                onClick = onNext,
+                enabled = hasItems && selectedIndex > 0
             ) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowRight,
@@ -152,8 +190,8 @@ private fun DateNavigationCard(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            repeat(8) { index ->
-                val isActive = index == 7 // Last dot (today) is active
+            items.forEachIndexed { index, _ ->
+                val isActive = index == selectedIndex
                 Box(
                     modifier = Modifier
                         .size(if (isActive) 8.dp else 6.dp)
@@ -173,7 +211,7 @@ private fun DateNavigationCard(
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = "8 of 8",
+                text = positionLabel,
                 fontSize = 12.sp,
                 color = TimelyCareTextSecondary
             )

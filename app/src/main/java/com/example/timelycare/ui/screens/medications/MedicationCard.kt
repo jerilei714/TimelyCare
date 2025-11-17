@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.timelycare.data.Frequency
 import com.example.timelycare.data.Medication
 import com.example.timelycare.ui.theme.*
 import java.time.LocalDate
@@ -68,6 +69,12 @@ fun MedicationCard(
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
+                    Text(
+                        text = "Frequency: ${formatFrequencyLabel(medication.frequency)}",
+                        fontSize = 14.sp,
+                        color = TimelyCareTextSecondary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
 
                 Row(
@@ -111,6 +118,19 @@ fun MedicationCard(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+private fun formatFrequencyLabel(frequency: Frequency): String {
+    return when (frequency) {
+        is Frequency.Daily -> "Daily"
+        is Frequency.SpecificDays -> {
+            if (frequency.days.isEmpty()) {
+                "Custom"
+            } else {
+                frequency.days.joinToString(", ") { it.toString() }
             }
         }
     }

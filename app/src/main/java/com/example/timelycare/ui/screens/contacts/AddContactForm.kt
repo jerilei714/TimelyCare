@@ -29,7 +29,6 @@ fun AddContactForm(
     modifier: Modifier = Modifier
 ) {
     var name by remember(editingContact) { mutableStateOf(editingContact?.name ?: "") }
-    var phone by remember(editingContact) { mutableStateOf(editingContact?.phone ?: "") }
     var selectedCountryCode by remember(editingContact) {
         mutableStateOf(
             if (editingContact != null) {
@@ -37,6 +36,11 @@ fun AddContactForm(
             } else {
                 CountryCodes.PHILIPPINES
             }
+        )
+    }
+    var phone by remember(editingContact, selectedCountryCode) {
+        mutableStateOf(
+            editingContact?.phone?.let { sanitizePhoneNumberInput(it, selectedCountryCode) } ?: ""
         )
     }
 
@@ -135,14 +139,17 @@ fun AddContactForm(
             // Country code dropdown
             CountryCodeDropdown(
                 selectedCountryCode = selectedCountryCode,
-                onCountryCodeSelected = { selectedCountryCode = it }
+                onCountryCodeSelected = {
+                    selectedCountryCode = it
+                    phone = sanitizePhoneNumberInput(phone, it)
+                }
             )
 
             // Phone number field
             OutlinedTextField(
                 value = phone,
                 onValueChange = {
-                    phone = it.filter { char -> char.isDigit() }
+                    phone = sanitizePhoneNumberInput(it, selectedCountryCode)
                     phoneError = ""
                 },
                 label = { Text("Phone number *") },
@@ -249,4 +256,12 @@ fun AddContactForm(
             }
         }
     }
+}
+
+private fun sanitizePhoneNumberInput(rawInput: String, countryCode: CountryCode): String {
+    val digitsOnly = rawInput.filter { it.isDigit() }
+    if (countryCode.code == CountryCodes.PHILIPPINES.code && digitsOnly.length > 1 && digitsOnly.first() == '0') {
+        return digitsOnly.drop(1)
+    }
+    return digitsOnly
 }
